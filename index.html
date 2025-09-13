@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Webcam </title>
+  <style>
+    body{
+    font-family:sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    background:#0f172a;
+    color:#e6eef8;
+    padding:20px
+    }
+    video, canvas{
+    width:90%;
+    max-width:600px;
+    border-radius:8px;
+    background:#0a0425;
+    margin:10px 0
+    }
+    button{
+    background:#2563eb;
+    color:white;
+    border:0;
+    padding:10px 16px;
+    border-radius:8px;
+    cursor:pointer;
+    margin-top:10px
+}
+  </style>
+</head>
+<body>
+  <h1>Da click en la pantalla y di "foto" para capturar</h1>
+  <video id="video" autoplay playsinline></video>
+  <canvas id="canvas"></canvas>
+  <button id="download" disabled>Descargar foto</button>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const downloadBtn = document.getElementById('download');
+    let recognition = null;
+    let videoReady = false;
+
+    async function startCamera(){
+      try{
+        const stream = await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+        video.srcObject = stream;
+        video.onloadedmetadata = ()=>{ video.play(); videoReady = true; };
+      }catch(err){
+        alert('Error con la cámara: '+err.message);
+      }
+    }
+
+    function takePhoto(){
+      if(!videoReady){
+        console.warn("El video aún no está listo para capturar.");
+        return;
+      }
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video,0,0,canvas.width,canvas.height);
+      console.log("Foto tomada ✅");
+      downloadBtn.disabled = false;
+    }
+
+    function downloadImage(){
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = 'foto.png';
+      a.click();
+    }
+
+    function startRecognition(){
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if(!SpeechRecognition){alert('Tu navegador no soporta Web Speech API');return;}
+      recognition = new SpeechRecognition();
+      recognition.lang = 'es-HN'; 
+      recognition.continuous = true;
+      recognition.interimResults = false;
+
+      recognition.onresult = (event)=>{
+        for(let i=event.resultIndex;i<event.results.length;i++){
+          const text = event.results[i][0].transcript.trim().toLowerCase();
+          console.log("Reconocido:", text);
+          if(text.includes("foto")){ takePhoto(); }
+        }
+      }
+      recognition.start();
+    }
+
+    downloadBtn.addEventListener('click', downloadImage);
+
+    window.onload = ()=>{
+      startCamera();
+      startRecognition();
+    }
+  </script>
+</body>
+</html>
+
